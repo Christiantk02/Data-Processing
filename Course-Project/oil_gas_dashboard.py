@@ -1,10 +1,9 @@
 # Import libraries
+# pip install dash plotly pandas statsmodels numpy
 import dash
-import base64
-import io
 import pandas as pd
 import plotly.express as px
-from dash import html, dcc, Input, Output, State, MATCH
+from dash import html, dcc, Input, Output
 
 
 # Import CSV Files
@@ -38,8 +37,20 @@ df = df[df['year'] >= 1987]
 
 # Plotting options
 plot_options = [
-    {'label': 'Oil Price and CO₂ Emissions over Time', 'value': 'time'},
-    {'label': 'Oil Price vs CO₂ (correlation)', 'value': 'corr'},
+    {'label': 'Oil Price and CO₂ Emissions over Time', 'value': 'time'}, 
+    # How do oil prices and CO₂ emissions change over time for each country?
+
+    {'label': 'Oil Price vs CO₂ (Correlation)', 'value': 'corr'}, 
+    # Is there a correlation between oil prices and CO₂ emissions?
+
+    {'label': 'Methane vs CO₂ (Gas Comparison)', 'value': 'methane_corr'}, 
+    # How do methane and CO₂ emissions relate to each other across countries?
+
+    {'label': 'Top 10 Countries by CO₂ Emissions', 'value': 'top10'}, 
+    # Which countries contribute the most to global emissions?
+
+    {'label': 'Predicted CO₂ Emissions (Trend Forecast)', 'value': 'predict'}, 
+    # What is the projected CO₂ emission trend for the next years?
 ]
 
 
@@ -80,7 +91,7 @@ app.layout = html.Div([
 def update_controls(selected_plot):
     if selected_plot is None:
         return ""
-    if selected_plot == 'time' or selected_plot == 'corr':
+    if selected_plot == 'time' or selected_plot == 'corr' or selected_plot == 'methane_corr':
         html_output = html.Div([
             html.Label('Select Country:'),
             dcc.Dropdown(
@@ -154,6 +165,32 @@ def update_plot(selected_plot, country, years):
             paper_bgcolor='#0d1b2a',
             plot_bgcolor='#1b263b',
             font_color='white'
+        )
+
+    if selected_plot == 'methane_corr':
+        dff = df[(df['country'] == country) & (df['year'].between(years[0], years[1]))]
+
+        fig = px.scatter(
+            dff,
+            x='methane',
+            y='co2',
+            color='year',
+            color_continuous_scale='turbo',
+            trendline='ols',
+            title=f'Methane vs CO₂ Emissions – {country}',
+            labels={
+                'methane': 'Methane emissions (million tonnes)',
+                'co2': 'CO₂ emissions (million tonnes)',
+                'year': 'Year'
+            }
+        )
+
+        fig.update_layout(
+            paper_bgcolor='#0d1b2a',
+            plot_bgcolor='#1b263b',
+            font_color='white',
+            title_font=dict(size=20),
+            coloraxis_colorbar=dict(title='Year')
         )
 
     return dcc.Graph(figure=fig)
