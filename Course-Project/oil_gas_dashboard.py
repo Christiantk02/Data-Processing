@@ -1,89 +1,74 @@
-# Import libraries
-# pip install dash plotly pandas statsmodels numpy
+# ---------------------------------------------
+# Requirements:
+# pip install dash plotly pandas scikit-learn
+# ---------------------------------------------
+
 import dash
 import pandas as pd
+import numpy as np
 import plotly.express as px
 from dash import html, dcc, Input, Output
+from sklearn.linear_model import LinearRegression
 
 
-# Import CSV Files
+# === DATA PREPARATION ===
 df_co2 = pd.read_csv('Course-Project/data/owid-co2-data.csv')
 df_oil = pd.read_csv('Course-Project/data/Europe_Brent_Spot_Price_FOB.csv', skiprows=4)
 
-
-# Preprocess CSV Files
+# Clean and align data
 df_oil.columns = ['date', 'brent_price_usd']
-
 df_oil['date'] = pd.to_datetime(df_oil['date'], errors='coerce')
 df_oil['year'] = df_oil['date'].dt.year
-
 df_oil = df_oil.dropna(subset=['year', 'brent_price_usd'])
-
 df_oil = df_oil.groupby('year', as_index=False)['brent_price_usd'].mean()
-df_oil['country'] = 'World'
+df_oil['country'] = 'World' 
 
 df_co2 = df_co2[['country', 'year', 'co2', 'methane']]
-
-df_co2 = df_co2.dropna(subset=['country', 'year', 'co2'])
+df_co2 = df_co2.dropna(subset=['country', 'year', 'co2']) 
 
 # Merge the datasets
 df = pd.merge(df_co2, df_oil, on='year', how='left')
-
 df = df.rename(columns={'country_x': 'country'})
 df = df.drop(columns=['country_y'])
-
 df = df[df['year'] >= 1987]
 
 
-# Plotting options
-plot_options = [
-    {'label': 'Oil Price and CO₂ Emissions over Time', 'value': 'time'}, 
-    # How do oil prices and CO₂ emissions change over time for each country?
-
-    {'label': 'Oil Price vs CO₂ (Correlation)', 'value': 'corr'}, 
-    # Is there a correlation between oil prices and CO₂ emissions?
-
-    {'label': 'Methane vs CO₂ (Gas Comparison)', 'value': 'methane_corr'}, 
-    # How do methane and CO₂ emissions relate to each other across countries?
-
-    {'label': 'Top 10 Countries by CO₂ Emissions', 'value': 'top10'}, 
-    # Which countries contribute the most to global emissions?
-
-    {'label': 'Predicted CO₂ Emissions (Trend Forecast)', 'value': 'predict'}, 
-    # What is the projected CO₂ emission trend for the next years?
-]
-
-
-# Initialize the Dash app
+# === DASH APP SETUP ===
 app = dash.Dash(__name__)
+app.config.suppress_callback_exceptions = True # IDEK
+app.title = "Oil & Gas Dashboard"
 
-app.config.suppress_callback_exceptions = True #IDEK
 
-# Define the layout of the app
+# === LAYOUT ===
 app.layout = html.Div([
-
-    html.Div([  # Title section
-        html.H1('Oil and Gas Dashboard'),
-        html.P('Interactive analysis of CO₂ emissions and Brent oil price.'),
-        html.P('By Christian T. Kvernland'),
-        html.Div(style={'height': '5px'})
+    html.Div([
+        html.H1("Oil and Gas Dashboard"),
+        html.P("Interactive analysis of CO₂ emissions and Brent oil price."),
+        html.P("By Christian T. Kvernland"),
+        html.Hr(style={'borderColor': '#1b263b'})
     ]),
 
     dcc.Dropdown(
-            id='plot-selector',
-            placeholder='Select what to plot..',
-            options=[{'label': o['label'], 'value': o['value']} for o in plot_options],
-            multi=False,
-            style={'width': '60%', 'color': 'black'}
+        id='plot-selector',
+        options=[
+            {'label': 'Oil Price and CO₂ Emissions over Time', 'value': 'time'},
+            {'label': 'Oil Price vs CO₂ (Correlation)', 'value': 'corr'},
+            {'label': 'Methane vs CO₂ (Gas Comparison)', 'value': 'methane_corr'},
+            {'label': 'Top 10 Countries by CO₂ Emissions', 'value': 'top10'},
+            {'label': 'Predicted CO₂ Emissions (Trend Forecast)', 'value': 'predict'}
+        ],
+        placeholder='Select what to plot...',
+        style={'width': '60%', 'color': 'black'}
     ),
 
+    html.Br(),
     html.Div(id='control-section'),
-    html.Div(id='plot-section')
+    html.Div(id='plot-section'),
 
-], style={'backgroundColor': '#0d1b2a', 'minHeight': '100vh', 'padding': '20px', 'font-family': 'verdana', 'color': 'white','paddingTop': '5px'})
+], style={'backgroundColor': '#0d1b2a', 'minHeight': '100vh', 'padding': '20px', 'fontFamily': 'verdana','color': 'white'})
 
 
-# Callback to update controls
+# === CALLBACKS ===
 @app.callback(
     Output('control-section', 'children'),
     Input('plot-selector', 'value')
@@ -115,8 +100,6 @@ def update_controls(selected_plot):
    
     return html_output
 
-
-# Callback to update plots for time
 @app.callback(
     Output('plot-section', 'children'),
     Input('plot-selector', 'value'),
@@ -145,7 +128,7 @@ def update_plot(selected_plot, country, years):
             paper_bgcolor='#0d1b2a',
             plot_bgcolor='#1b263b',
             font_color='white',
-            legend=dict(orientation='h', y=-0.2)
+            legend=dict(orientation='h')
         )
     
     if selected_plot == 'corr':
@@ -196,5 +179,5 @@ def update_plot(selected_plot, country, years):
     return dcc.Graph(figure=fig)
 
 
-# Run the app
+# === RUN APP ===
 app.run(debug=True)
